@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-light: #f0d9b5;
+  --color-dark: #b58863;
+}
+
+body {
+  font-family:
+    "Inter Variable",
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji";
+  color: #bababa;
+  background: #161512;
+}
+
+/* Dark theme auth input fields */
+.auth-input-field {
+  @apply w-full px-4 py-3 rounded bg-[#1f1e1b] border border-gray-700 text-white placeholder-gray-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all;
+}
+
+/* Primary auth button (green) */
+.auth-button {
+  @apply w-full px-4 py-3 rounded bg-primary text-white font-semibold hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Secondary auth button (dark) */
+.auth-button-secondary {
+  @apply w-full px-4 py-3 rounded bg-gray-700 text-gray-200 font-medium hover:bg-gray-600 transition-colors;
+}
