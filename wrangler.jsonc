@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "chess-opening-trainer",
+  "compatibility_date": "2026-01-27",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "single-page-application"
+  }
+}
