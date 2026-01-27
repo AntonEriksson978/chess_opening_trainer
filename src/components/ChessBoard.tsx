@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { getGameFromMoves, getBoardState, tryMove, getLegalMoves } from "../lib/chess";
 
 interface ChessBoardProps {
   position: string[];
@@ -11,24 +12,23 @@ interface ChessBoardProps {
 export function ChessBoard({ position, onMove, userSide, disabled, highlightResult }: ChessBoardProps) {
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
 
-  // Initialize board with starting position
-  const initialBoard: Record<string, string> = {
-    a1: "R", b1: "N", c1: "B", d1: "Q", e1: "K", f1: "B", g1: "N", h1: "R",
-    a2: "P", b2: "P", c2: "P", d2: "P", e2: "P", f2: "P", g2: "P", h2: "P",
-    a7: "p", b7: "p", c7: "p", d7: "p", e7: "p", f7: "p", g7: "p", h7: "p",
-    a8: "r", b8: "n", c8: "b", d8: "q", e8: "k", f8: "b", g8: "n", h8: "r",
-  };
+  // Build game state from move list
+  const game = useMemo(() => getGameFromMoves(position), [position]);
+  const board = useMemo(() => getBoardState(game), [game]);
 
-  // SVG piece components (Lichess-style)
-  const pieces: Record<string, string> = {
-    // White pieces
-    K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙",
-    // Black pieces
-    k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟",
-  };
+  // Get available moves for selected piece
+  const availableMoves = useMemo(() => {
+    if (!selectedSquare) return new Set<string>();
+    return new Set(getLegalMoves(game, selectedSquare));
+  }, [selectedSquare, game]);
 
-  // Apply moves to get current board state
-  const board = { ...initialBoard };
+  // SVG piece paths (Lichess cburnett set)
+  const pieceToSvg: Record<string, string> = {
+    K: "/pieces/wK.svg", Q: "/pieces/wQ.svg", R: "/pieces/wR.svg",
+    B: "/pieces/wB.svg", N: "/pieces/wN.svg", P: "/pieces/wP.svg",
+    k: "/pieces/bK.svg", q: "/pieces/bQ.svg", r: "/pieces/bR.svg",
+    b: "/pieces/bB.svg", n: "/pieces/bN.svg", p: "/pieces/bP.svg",
+  };
 
   const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
   const ranks = userSide === "white" ? ["8", "7", "6", "5", "4", "3", "2", "1"] : ["1", "2", "3", "4", "5", "6", "7", "8"];
@@ -38,15 +38,15 @@ export function ChessBoard({ position, onMove, userSide, disabled, highlightResu
     if (disabled) return;
 
     if (selectedSquare) {
-      const move = `${selectedSquare}${square}`;
-      onMove(move);
+      const san = tryMove(game, selectedSquare, square);
+      if (san) {
+        onMove(san);
+      }
       setSelectedSquare(null);
     } else if (board[square]) {
       setSelectedSquare(square);
     }
   };
-
-  const isWhitePiece = (piece: string) => piece === piece.toUpperCase();
 
   return (
     <div className="space-y-2">
@@ -91,6 +91,8 @@ export function ChessBoard({ position, onMove, userSide, disabled, highlightResu
                   const isLight = (files.indexOf(file) + parseInt(rank)) % 2 === 0;
                   const piece = board[square];
                   const isSelected = selectedSquare === square;
+                  const isAvailableMove = availableMoves.has(square);
+                  const isCapture = isAvailableMove && piece;
 
                   return (
                     <button
@@ -102,27 +104,23 @@ export function ChessBoard({ position, onMove, userSide, disabled, highlightResu
                         transition-colors
                         ${isLight ? "bg-board-light" : "bg-board-dark"}
                         ${isSelected ? "bg-board-selected" : ""}
-                        ${!disabled && piece ? "cursor-pointer" : ""}
+                        ${!disabled && (piece || isAvailableMove) ? "cursor-pointer" : ""}
                         ${disabled ? "cursor-default" : ""}
                       `}
                     >
                       {piece && (
-                        <span
-                          className={`
-                            text-[min(10vw,3.5rem)] leading-none select-none
-                            ${isWhitePiece(piece)
-                              ? "text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]"
-                              : "text-gray-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.3)]"
-                            }
-                          `}
-                          style={{
-                            textShadow: isWhitePiece(piece)
-                              ? '0 0 2px #000, 0 0 2px #000'
-                              : '0 0 1px rgba(255,255,255,0.5)'
-                          }}
-                        >
-                          {pieces[piece]}
-                        </span>
+                        <img
+                          src={pieceToSvg[piece]}
+                          alt={piece}
+                          className="w-[85%] h-[85%] select-none pointer-events-none"
+                          draggable={false}
+                        />
+                      )}
+                      {isAvailableMove && !piece && (
+                        <div className="absolute w-[30%] h-[30%] rounded-full bg-black/20" />
+                      )}
+                      {isCapture && (
+                        <div className="absolute inset-0 rounded-full border-[3px] border-black/20 m-[5%]" />
                       )}
                     </button>
                   );

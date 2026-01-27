@@ -4,6 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { OpeningEditor } from "./OpeningEditor";
+import { BulkImport } from "./BulkImport";
 
 export function OpeningsList() {
   const openings = useQuery(api.openings.listAll);
@@ -12,6 +13,7 @@ export function OpeningsList() {
     Id<"openings"> | null
   >(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isBulkImporting, setIsBulkImporting] = useState(false);
   const [expandedOpenings, setExpandedOpenings] = useState<Set<string>>(
     new Set()
   );
@@ -69,12 +71,20 @@ export function OpeningsList() {
           </h2>
           <p className="text-gray-400 text-sm">Select openings to practice</p>
         </div>
-        <button
-          onClick={() => setIsCreating(true)}
-          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover font-medium text-sm"
-        >
-          + New Opening
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsBulkImporting(true)}
+            className="px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700/50 text-sm"
+          >
+            Bulk Import
+          </button>
+          <button
+            onClick={() => setIsCreating(true)}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover font-medium text-sm"
+          >
+            + New Opening
+          </button>
+        </div>
       </div>
 
       {(["beginner", "intermediate", "advanced"] as const).map((difficulty) => (
@@ -248,6 +258,10 @@ export function OpeningsList() {
             setIsCreating(false);
           }}
         />
+      )}
+
+      {isBulkImporting && (
+        <BulkImport onClose={() => setIsBulkImporting(false)} />
       )}
     </div>
   );

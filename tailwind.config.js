@@ -29,12 +29,12 @@ module.exports = {
           DEFAULT: "#bf811d",
           hover: "#a06f19",
         },
-        // Lichess-style board colors
+        // Blue/white board colors
         board: {
-          light: "#f0d9b5",
-          dark: "#b58863",
-          highlight: "#cdd26a",
-          selected: "#819669",
+          light: "#dee3e6",
+          dark: "#8ca2ad",
+          highlight: "#afd06e",
+          selected: "#5f9ea0",
         },
         // Dark theme header
         header: {

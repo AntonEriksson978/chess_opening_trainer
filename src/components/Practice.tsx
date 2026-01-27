@@ -16,7 +16,10 @@ export function Practice() {
 
   useEffect(() => {
     if (nextPractice) {
-      setCurrentPosition([]);
+      const { opening, moves } = nextPractice;
+      // If user plays black, start with white's first move
+      const initialPosition = opening.side === "black" && moves.length > 0 ? [moves[0]] : [];
+      setCurrentPosition(initialPosition);
       setUserMoveIndex(0);
       setStartTime(Date.now());
       setShowingResult(false);

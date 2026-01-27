@@ -305,6 +305,165 @@ export const getOpening = query({
   },
 });
 
+// Bulk import openings from text format
+export const bulkImport = mutation({
+  args: {
+    text: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const openings = parseImportText(args.text);
+    const results = { imported: 0, errors: [] as string[] };
+
+    for (const opening of openings) {
+      try {
+        if (!opening.name || !opening.moves || opening.moves.length === 0) {
+          results.errors.push(`Skipped: Missing name or moves`);
+          continue;
+        }
+
+        const openingId = await ctx.db.insert("openings", {
+          name: opening.name,
+          eco: opening.eco || "",
+          moves: opening.moves,
+          side: opening.side || "white",
+          description: opening.description || "",
+          difficulty: opening.difficulty || "beginner",
+          userId,
+        });
+
+        // Add any additional lines
+        for (let i = 0; i < opening.lines.length; i++) {
+          const line = opening.lines[i];
+          if (line.name && line.moves.length > 0) {
+            await ctx.db.insert("lines", {
+              openingId,
+              name: line.name,
+              moves: line.moves,
+              order: i + 1,
+            });
+          }
+        }
+
+        results.imported++;
+      } catch (e) {
+        results.errors.push(`Error importing "${opening.name}": ${e}`);
+      }
+    }
+
+    return results;
+  },
+});
+
+function parseImportText(text: string): Array<{
+  name: string;
+  eco: string;
+  side: "white" | "black";
+  difficulty: "beginner" | "intermediate" | "advanced";
+  description: string;
+  moves: string[];
+  lines: Array<{ name: string; moves: string[] }>;
+}> {
+  const openings: Array<{
+    name: string;
+    eco: string;
+    side: "white" | "black";
+    difficulty: "beginner" | "intermediate" | "advanced";
+    description: string;
+    moves: string[];
+    lines: Array<{ name: string; moves: string[] }>;
+  }> = [];
+
+  // Split by opening separator (---)
+  const blocks = text.split(/\n---\n|\n---$|^---\n/).filter((b) => b.trim());
+
+  for (const block of blocks) {
+    const opening: {
+      name: string;
+      eco: string;
+      side: "white" | "black";
+      difficulty: "beginner" | "intermediate" | "advanced";
+      description: string;
+      moves: string[];
+      lines: Array<{ name: string; moves: string[] }>;
+    } = {
+      name: "",
+      eco: "",
+      side: "white",
+      difficulty: "beginner",
+      description: "",
+      moves: [],
+      lines: [],
+    };
+
+    // Split into main opening and lines
+    const lineSections = block.split(/\nLine:\s*/i);
+    const mainSection = lineSections[0];
+
+    // Parse main section
+    const lines = mainSection.split("\n");
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      if (trimmed.toLowerCase().startsWith("name:")) {
+        opening.name = trimmed.slice(5).trim();
+      } else if (trimmed.toLowerCase().startsWith("eco:")) {
+        opening.eco = trimmed.slice(4).trim();
+      } else if (trimmed.toLowerCase().startsWith("side:")) {
+        const side = trimmed.slice(5).trim().toLowerCase();
+        opening.side = side === "black" ? "black" : "white";
+      } else if (trimmed.toLowerCase().startsWith("difficulty:")) {
+        const diff = trimmed.slice(11).trim().toLowerCase();
+        if (diff === "intermediate") opening.difficulty = "intermediate";
+        else if (diff === "advanced") opening.difficulty = "advanced";
+        else opening.difficulty = "beginner";
+      } else if (trimmed.toLowerCase().startsWith("description:")) {
+        opening.description = trimmed.slice(12).trim();
+      } else if (trimmed.toLowerCase().startsWith("moves:")) {
+        opening.moves = parseMoves(trimmed.slice(6));
+      }
+    }
+
+    // Parse additional lines/variations
+    for (let i = 1; i < lineSections.length; i++) {
+      const lineSection = lineSections[i];
+      const lineLines = lineSection.split("\n");
+      const lineName = lineLines[0].trim();
+      let lineMoves: string[] = [];
+
+      for (const l of lineLines.slice(1)) {
+        const trimmed = l.trim();
+        if (trimmed.toLowerCase().startsWith("moves:")) {
+          lineMoves = parseMoves(trimmed.slice(6));
+          break;
+        }
+      }
+
+      if (lineName && lineMoves.length > 0) {
+        opening.lines.push({ name: lineName, moves: lineMoves });
+      }
+    }
+
+    if (opening.name || opening.moves.length > 0) {
+      openings.push(opening);
+    }
+  }
+
+  return openings;
+}
+
+function parseMoves(text: string): string[] {
+  return text
+    .replace(/\d+\./g, "") // Remove move numbers
+    .replace(/\{[^}]*\}/g, "") // Remove comments in braces
+    .replace(/\([^)]*\)/g, "") // Remove variations in parens
+    .split(/\s+/)
+    .filter((m) => m.trim().length > 0 && !m.includes("..."));
+}
+
 // Seed initial openings (can be called from client on first load)
 export const seedOpenings = mutation({
   args: {},
